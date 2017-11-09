@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DCGAN in Tensorflow
 
 Tensorflow implementation of [Deep Convolutional Generative Adversarial Networks](http://arxiv.org/abs/1511.06434) which is a stabilize Generative Adversarial Networks. The referenced torch code can be found [here](https://github.com/soumith/dcgan.torch).
@@ -110,3 +111,7 @@ Details of the histogram of true and fake result of discriminator (with custom d
 ## Author
 
 Taehoon Kim / [@carpedm20](http://carpedm20.github.io/)
+=======
+# MLGAN
+Multi label DCGAN. The code highly borrowed from carpedm20's DCGAN
+>>>>>>> 9adbcf75b1c5b0d72946359d68d8d10e69bd27ff

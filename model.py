@@ -307,7 +307,16 @@ class DCGAN(object):
 
         if np.mod(counter, 500) == 2:
           self.save(config.checkpoint_dir, counter)
+  
+ """ def creative (self, image, y=None, reuse=False) :
+      with tf,variable_scope("creative") as scope :
+          if reuse :
+              scope.reuse_variables()
 
+        if not self.y_dim :
+            h0 = lrelu(conv2d(image,self.df_dim,4,4 ,name='d_h0_conv'))
+            h1 = lrelu(self.d_bn1(conv2
+"""
   def discriminator(self, image, y=None, reuse=False):
     with tf.variable_scope("discriminator") as scope:
       if reuse:
@@ -319,8 +328,9 @@ class DCGAN(object):
         h2 = lrelu(self.d_bn2(conv2d(h1, self.df_dim*4, name='d_h2_conv')))
         h3 = lrelu(self.d_bn3(conv2d(h2, self.df_dim*8, name='d_h3_conv')))
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h4_lin')
-
-        return tf.nn.sigmoid(h4), h4
+        g = gram(h3)
+        return tf.nn.sigmoid(g), g
+  #      return tf.nn.sigmoid(h4), h4
       else:
         yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
         x = conv_cond_concat(image, yb)
@@ -336,8 +346,10 @@ class DCGAN(object):
         h2 = concat([h2, y], 1)
 
         h3 = linear(h2, 1, 'd_h3_lin')
+        g = gram(h3)
+        return tf.nn.sigmoid(g), g
         
-        return tf.nn.sigmoid(h3), h3
+   #     return tf.nn.sigmoid(h3), h3
 
   def generator(self, z, y=None):
     with tf.variable_scope("generator") as scope:
@@ -370,7 +382,6 @@ class DCGAN(object):
 
         h4, self.h4_w, self.h4_b = deconv2d(
             h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4', with_w=True)
-
         return tf.nn.tanh(h4)
       else:
         s_h, s_w = self.output_height, self.output_width
@@ -394,9 +405,8 @@ class DCGAN(object):
         h2 = tf.nn.relu(self.g_bn2(deconv2d(h1,
             [self.batch_size, s_h2, s_w2, self.gf_dim * 2], name='g_h2')))
         h2 = conv_cond_concat(h2, yb)
-
         return tf.nn.sigmoid(
-            deconv2d(h2, [self.batch_size, s_h, s_w, self.c_dim], name='g_h3'))
+           deconv2d(h2, [self.batch_size, s_h, s_w, self.c_dim], name='g_h3'))
 
   def sampler(self, z, y=None):
     with tf.variable_scope("generator") as scope:
@@ -425,7 +435,6 @@ class DCGAN(object):
         h3 = tf.nn.relu(self.g_bn3(h3, train=False))
 
         h4 = deconv2d(h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4')
-
         return tf.nn.tanh(h4)
       else:
         s_h, s_w = self.output_height, self.output_width
