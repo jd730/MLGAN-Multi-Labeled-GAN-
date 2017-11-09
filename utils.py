@@ -20,7 +20,6 @@ pp = pprint.PrettyPrinter()
 get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 
 def gram(feature) :
-    print(feature.shape)
     feature = tf.reshape(feature, [256,512])
     mat = tf.matmul(tf.transpose(feature), feature)
     return mat
@@ -31,6 +30,7 @@ def get_label (path) :
     with open(path,'r') as f :
         dic = pickle.load(f)
     return dic
+
 
 
 def show_all_variables():

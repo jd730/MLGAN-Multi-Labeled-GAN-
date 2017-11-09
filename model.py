@@ -89,9 +89,9 @@ class DCGAN(object):
         self.c_dim = 1
     #jaed
     if self.label1_dim : # key : id, value : stlye or gerne
-        self.label1 = get_label(self.label1_path)
+        self.label1_dic = get_label(self.label1_path)
     if self.label2_dim :
-        self.label2 = get_label(self.label2_path)
+        self.label2_dic = get_label(self.label2_path)
 
     self.grayscale = (self.c_dim == 1)
 
@@ -230,14 +230,13 @@ class DCGAN(object):
                         crop=self.crop,
                         grayscale=self.grayscale) for batch_file in batch_files]
           
-          if not self.label1_dim : #batch_file is image
-            batch_label1s = [self.label1[batch_file] for batch_file in batch_files] 
+          if self.label1_dim : #batch_file is image
+            batch_label1s = [self.label1_dic[   batch_file.split('/')[-1].split('.')[0] ] for batch_file in batch_files] 
           else :
             batch_label1s = None
-#TODO implement label1, label2 
-          if not self.label2_dim :
-            print self.label2
-            batch_label2s = [self.label2[   batch_file.split('/')[-1].split('.')[0] ] for batch_file in batch_files] 
+          
+          if self.label2_dim :
+            batch_label2s = [self.label2_dic[   batch_file.split('/')[-1].split('.')[0] ] for batch_file in batch_files] 
           else : 
             batch_label2s = None
 
