@@ -230,6 +230,7 @@ class DCGAN(object):
                         crop=self.crop,
                         grayscale=self.grayscale) for batch_file in batch_files]
           
+          #read batch_labels TODO : Implement one-hot vector
           if self.label1_dim : #batch_file is image
             batch_label1s = [self.label1_dic[   batch_file.split('/')[-1].split('.')[0] ] for batch_file in batch_files] 
           else :
