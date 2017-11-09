@@ -18,7 +18,8 @@ class DCGAN(object):
          batch_size=64, sample_num = 64, output_height=64, output_width=64,
          y_dim=None, z_dim=100, gf_dim=64, df_dim=64,
          gfc_dim=1024, dfc_dim=1024, c_dim=3, dataset_name='default',
-         input_fname_pattern='*.jpg', checkpoint_dir=None, sample_dir=None):
+         input_fname_pattern='*.jpg', checkpoint_dir=None, sample_dir=None,
+         label1_dim=None, label2_dim = None, label1_path= None, label2_path = None):
     """
 
     Args:
@@ -52,6 +53,11 @@ class DCGAN(object):
     self.gfc_dim = gfc_dim
     self.dfc_dim = dfc_dim
 
+    self.label1_dim = label1_dim
+    self.label2_dim = label2_dim
+    self.label1_path = label1_path
+    self.label2_path = label2_path
+
     # batch normalization : deals with poor initialization helps gradient flow
     self.d_bn1 = batch_norm(name='d_bn1')
     self.d_bn2 = batch_norm(name='d_bn2')
@@ -74,12 +80,18 @@ class DCGAN(object):
       self.data_X, self.data_y = self.load_mnist()
       self.c_dim = self.data_X[0].shape[-1]
     else:
+      print os.path.join("./data", self.dataset_name, self.input_fname_pattern)
       self.data = glob(os.path.join("./data", self.dataset_name, self.input_fname_pattern))
       imreadImg = imread(self.data[0]);
       if len(imreadImg.shape) >= 3: #check if image is a non-grayscale image by checking channel number
         self.c_dim = imread(self.data[0]).shape[-1]
       else:
         self.c_dim = 1
+    #jaed
+    if self.label1_dim : # key : id, value : stlye or gerne
+        self.label1 = get_label(self.label1_path)
+    if self.label2_dim :
+        self.label2 = get_label(self.label2_path)
 
     self.grayscale = (self.c_dim == 1)
 
@@ -90,6 +102,14 @@ class DCGAN(object):
       self.y = tf.placeholder(tf.float32, [self.batch_size, self.y_dim], name='y')
     else:
       self.y = None
+    if self.label1_dim : #jaed
+      self.label1 = tf.placeholder(tf.float32,[self.batch_size,self.label1_dim], name='label1')
+    else :
+      elf.label1 = None
+    if self.label2_dim :
+      self.label2 = tf.placeholder(tf.float32,[self.batch_size,self.label2_dim], name='label2')
+    else :
+      self.label2 = None
 
     if self.crop:
       image_dims = [self.output_height, self.output_width, self.c_dim]
@@ -209,6 +229,18 @@ class DCGAN(object):
                         resize_width=self.output_width,
                         crop=self.crop,
                         grayscale=self.grayscale) for batch_file in batch_files]
+          
+          if not self.label1_dim : #batch_file is image
+            batch_label1s = [self.label1[batch_file] for batch_file in batch_files] 
+          else :
+            batch_label1s = None
+#TODO implement label1, label2 
+          if not self.label2_dim :
+            print self.label2
+            batch_label2s = [self.label2[   batch_file.split('/')[-1].split('.')[0] ] for batch_file in batch_files] 
+          else : 
+            batch_label2s = None
+
           if self.grayscale:
             batch_images = np.array(batch).astype(np.float32)[:, :, :, None]
           else:
@@ -308,15 +340,6 @@ class DCGAN(object):
         if np.mod(counter, 500) == 2:
           self.save(config.checkpoint_dir, counter)
   
- """ def creative (self, image, y=None, reuse=False) :
-      with tf,variable_scope("creative") as scope :
-          if reuse :
-              scope.reuse_variables()
-
-        if not self.y_dim :
-            h0 = lrelu(conv2d(image,self.df_dim,4,4 ,name='d_h0_conv'))
-            h1 = lrelu(self.d_bn1(conv2
-"""
   def discriminator(self, image, y=None, reuse=False):
     with tf.variable_scope("discriminator") as scope:
       if reuse:
@@ -334,14 +357,14 @@ class DCGAN(object):
       else:
         yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
         x = conv_cond_concat(image, yb)
-
+  
         h0 = lrelu(conv2d(x, self.c_dim + self.y_dim, name='d_h0_conv'))
         h0 = conv_cond_concat(h0, yb)
-
+  
         h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim + self.y_dim, name='d_h1_conv')))
         h1 = tf.reshape(h1, [self.batch_size, -1])      
         h1 = concat([h1, y], 1)
-        
+          
         h2 = lrelu(self.d_bn2(linear(h1, self.dfc_dim, 'd_h2_lin')))
         h2 = concat([h2, y], 1)
 
