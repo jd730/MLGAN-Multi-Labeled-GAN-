@@ -25,12 +25,25 @@ def gram(feature) :
     return mat
 
 def get_label (path) :
+    idx = []
+    data = {}
     dic = {}
     print ("Label Read : " + path)
     with open(path,'r') as f :
         dic = pickle.load(f)
+        for k,v in dic.items() : #convert string label to integer for one_hot
+            if v in idx :
+                data[k] = idx.index(v)
+            else :
+                data[k] = len(idx)
+                idx.append(v)
+    return data,idx
     return dic
 
+def one_hot (y, dim) :
+    y_one_hot = np.zeros((len(y), dim))
+    y_one_hot[np.arange(len(y)), y] = 1
+    return y_one_hot
 
 
 def show_all_variables():

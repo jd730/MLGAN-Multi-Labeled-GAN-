@@ -89,9 +89,9 @@ class DCGAN(object):
         self.c_dim = 1
     #jaed
     if self.label1_dim : # key : id, value : stlye or gerne
-        self.label1_dic = get_label(self.label1_path)
+        self.label1_dic, self.label1_original = get_label(self.label1_path)
     if self.label2_dim :
-        self.label2_dic = get_label(self.label2_path)
+        self.label2_dic, self.label2_original = get_label(self.label2_path)
 
     self.grayscale = (self.c_dim == 1)
 
@@ -102,10 +102,12 @@ class DCGAN(object):
       self.y = tf.placeholder(tf.float32, [self.batch_size, self.y_dim], name='y')
     else:
       self.y = None
+
     if self.label1_dim : #jaed
       self.label1 = tf.placeholder(tf.float32,[self.batch_size,self.label1_dim], name='label1')
     else :
       elf.label1 = None
+    
     if self.label2_dim :
       self.label2 = tf.placeholder(tf.float32,[self.batch_size,self.label2_dim], name='label2')
     else :
@@ -230,14 +232,14 @@ class DCGAN(object):
                         crop=self.crop,
                         grayscale=self.grayscale) for batch_file in batch_files]
           
-          #read batch_labels TODO : Implement one-hot vector
           if self.label1_dim : #batch_file is image
-            batch_label1s = [self.label1_dic[   batch_file.split('/')[-1].split('.')[0] ] for batch_file in batch_files] 
+            batch_label1s = [self.label1_dic[   batch_file.split('/')[-1].split('.')[0] ] for batch_file in batch_files]
+            batch_label1s = one_hot(batch_label1s, self.label1_dim)
           else :
             batch_label1s = None
-          
           if self.label2_dim :
             batch_label2s = [self.label2_dic[   batch_file.split('/')[-1].split('.')[0] ] for batch_file in batch_files] 
+            batch_label2s = one_hot(batch_label2s, self.label2_dim)
           else : 
             batch_label2s = None
 
@@ -284,25 +286,26 @@ class DCGAN(object):
               self.z: batch_z,
               self.y: batch_labels
           })
-        else:
-          # Update D network
+        else: 
+           # Update D network
           _, summary_str = self.sess.run([d_optim, self.d_sum],
-            feed_dict={ self.inputs: batch_images, self.z: batch_z })
+            feed_dict={ self.inputs: batch_images, self.z: batch_z,
+                self.label1: batch_label1s, self.label2: batch_label2s})
           self.writer.add_summary(summary_str, counter)
 
           # Update G network
           _, summary_str = self.sess.run([g_optim, self.g_sum],
-            feed_dict={ self.z: batch_z })
+            feed_dict={ self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s })
           self.writer.add_summary(summary_str, counter)
 
           # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
           _, summary_str = self.sess.run([g_optim, self.g_sum],
-            feed_dict={ self.z: batch_z })
+            feed_dict={ self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s})
           self.writer.add_summary(summary_str, counter)
           
-          errD_fake = self.d_loss_fake.eval({ self.z: batch_z })
-          errD_real = self.d_loss_real.eval({ self.inputs: batch_images })
-          errG = self.g_loss.eval({self.z: batch_z})
+          errD_fake = self.d_loss_fake.eval({ self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s })
+          errD_real = self.d_loss_real.eval({ self.inputs: batch_images, self.label1: batch_label1s, self.label2: batch_label2s })
+          errG = self.g_loss.eval({self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s})
 
         counter += 1
         print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
