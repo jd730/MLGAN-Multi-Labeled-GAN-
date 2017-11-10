@@ -24,6 +24,11 @@ flags.DEFINE_string("sample_dir", "samples", "Directory name to save the image s
 flags.DEFINE_boolean("train", False, "True for training, False for testing [False]")
 flags.DEFINE_boolean("crop", False, "True for training, False for testing [False]")
 flags.DEFINE_boolean("visualize", False, "True for visualizing, False for nothing [False]")
+flags.DEFINE_integer("label2_dim",None, "label2's dimension [None]")
+flags.DEFINE_integer("label1_dim",None, "label2's dimension [None]")
+flags.DEFINE_string("label1_path", "./data/style.pkl", "path of label1 [./data/style.pkl]")
+flags.DEFINE_string("label2_path", "./data/genre.pkl", "path of label2 [./data/genre.pkl]")
+#flags.DEFINE_integer("label1_dim",None, "label1's dimension [None]") # when I do this name. expected one argument error occur
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -72,7 +77,12 @@ def main(_):
           input_fname_pattern=FLAGS.input_fname_pattern,
           crop=FLAGS.crop,
           checkpoint_dir=FLAGS.checkpoint_dir,
-          sample_dir=FLAGS.sample_dir)
+          sample_dir=FLAGS.sample_dir,
+          label1_dim = FLAGS.label1_dim,
+          label2_dim = FLAGS.label2_dim,
+          label1_path = FLAGS.label1_path,
+          label2_path = FLAGS.label2_path
+          )
 
     show_all_variables()
 

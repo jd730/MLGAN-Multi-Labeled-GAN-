@@ -11,6 +11,7 @@ import numpy as np
 from time import gmtime, strftime
 from six.moves import xrange
 
+import pickle
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
@@ -19,11 +20,30 @@ pp = pprint.PrettyPrinter()
 get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 
 def gram(feature) :
-    print(feature.shape)
     feature = tf.reshape(feature, [256,512])
-    print (tf.size(feature))
     mat = tf.matmul(tf.transpose(feature), feature)
     return mat
+
+def get_label (path) :
+    idx = []
+    data = {}
+    dic = {}
+    print ("Label Read : " + path)
+    with open(path,'r') as f :
+        dic = pickle.load(f)
+        for k,v in dic.items() : #convert string label to integer for one_hot
+            if v in idx :
+                data[k] = idx.index(v)
+            else :
+                data[k] = len(idx)
+                idx.append(v)
+    return data,idx
+    return dic
+
+def one_hot (y, dim) :
+    y_one_hot = np.zeros((len(y), dim))
+    y_one_hot[np.arange(len(y)), y] = 1
+    return y_one_hot
 
 
 def show_all_variables():

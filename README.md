@@ -1,3 +1,2 @@
-Multi-Label Generative Adversarial Network.
-
-Most code borrowed from carpedm20's DCGAN.
+# MLGAN
+Multi label DCGAN. The code highly borrowed from carpedm20's DCGAN
