@@ -129,20 +129,39 @@ class DCGAN(object):
       tf.float32, [None, self.z_dim], name='z')
     self.z_sum = histogram_summary("z", self.z)
 
-    self.G                  = self.generator(self.z, self.y)
-    self.D, self.D_logits   = self.discriminator(inputs, self.y, reuse=False)
-    self.sampler            = self.sampler(self.z, self.y)
-    self.D_, self.D_logits_ = self.discriminator(self.G, self.y, reuse=True)
-    
-    self.d_sum = histogram_summary("d", self.D)
-    self.d__sum = histogram_summary("d_", self.D_)
-    self.G_sum = image_summary("G", self.G)
-
     def sigmoid_cross_entropy_with_logits(x, y):
       try:
         return tf.nn.sigmoid_cross_entropy_with_logits(logits=x, labels=y)
       except:
         return tf.nn.sigmoid_cross_entropy_with_logits(logits=x, targets=y)
+
+    if not self.label1_dim :
+      self.G                  = self.generator(self.z, self.y)
+      self.D, self.D_logits   = self.discriminator(inputs, self.y, reuse=False)
+      self.sampler            = self.sampler(self.z, self.y)
+      self.D_, self.D_logits_  = self.discriminator(self.G, self.y, reuse=True)
+    
+    elif not self.label2_dim:
+      self.G                  = self.generator(self.z, self.y)
+      self.D, self.D_logits, self.Dl1, self.Dl1_logits  = self.discriminator(inputs, self.y, reuse=False)
+      self.sampler            = self.sampler(self.z, self.y)
+      self.D_, self.D_logits_, self.Dl1_, self.Dl1_logits_,  = self.discriminator(self.G, self.y, reuse=True)
+      self.dl1_sum = histogram_summary("dl1", self.Dl1)
+      self.dl1__sum = histogram_summary("dl1_", self.Dl1_)
+    else :
+      self.G                  = self.generator(self.z, self.y)
+      self.D, self.D_logits, self.Dl1, self.Dl1_logits, self.Dl2, self.Dl2_logits   = self.discriminator(inputs, self.y, reuse=False)
+      self.sampler            = self.sampler(self.z, self.y)
+      self.D_, self.D_logits_, self.Dl1_, self.Dl1_logits_, self.Dl2_, self.Dl2_logits_ = self.discriminator(self.G, self.y, reuse=True)
+      self.dl1_sum = histogram_summary("dl1", self.Dl1)
+      self.dl2_sum = histogram_summary("dl2", self.Dl2)
+      self.dl1__sum = histogram_summary("dl1_", self.Dl1_)
+      self.dl2__sum = histogram_summary("dl2_", self.Dl2_)
+
+
+    self.d_sum = histogram_summary("d", self.D)
+    self.d__sum = histogram_summary("d_", self.D_)
+    self.G_sum = image_summary("G", self.G)
 
     self.d_loss_real = tf.reduce_mean(
       sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
@@ -350,7 +369,7 @@ class DCGAN(object):
     with tf.variable_scope("discriminator") as scope:
       if reuse:
         scope.reuse_variables()
-
+      print("discriminator")
       if self.y_dim:
         yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
         x = conv_cond_concat(image, yb)
@@ -383,9 +402,20 @@ class DCGAN(object):
         h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim*2, name='d_h1_conv')))
         h2 = lrelu(self.d_bn2(conv2d(h1, self.df_dim*4, name='d_h2_conv')))
         h3 = lrelu(self.d_bn3(conv2d(h2, self.df_dim*8, name='d_h3_conv')))
-        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h4_lin')
-        return tf.nn.sigmoid(h4), h4
         
+        h3_reshape = tf.reshape(h3, [self.batch_size, -1])
+        h4 = linear(h3_reshape,1, 'd_h4_lin')
+        
+        hf0 = linear(h3_reshape,1024 , 'd_hf0_lin')
+        hf1 = linear(hf0, 512 , 'd_hf1_lin')
+        hf2 = linear(hf1, 256 , 'd_hf2_lin')
+        hf3 = linear(hf2, self.label1_dim , 'd_hf3_lin')
+        hs0 = linear(h3_reshape,1024 , 'd_hs0_lin')
+        hs1 = linear(hs0, 512 , 'd_hs1_lin')
+        hs2 = linear(hs1, 256 , 'd_hs2_lin')
+        hs3 = linear(hs2, self.label2_dim , 'd_hs3_lin')
+        sm = tf.nn.softmax(hs3)
+        return tf.nn.sigmoid(h4), h4, tf.nn.softmax(hf3),hf3, tf.nn.softmax(hs3), hs3  
 
   def generator(self, z, y=None):
     with tf.variable_scope("generator") as scope:
@@ -474,6 +504,7 @@ class DCGAN(object):
             h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4', with_w=True)
         return tf.nn.tanh(h4)
       else: # label1 and label2 are on
+        print("generaotr0")
         s_h, s_w = self.output_height, self.output_width
         s_h2, s_w2 = conv_out_size_same(s_h, 2), conv_out_size_same(s_w, 2)
         s_h4, s_w4 = conv_out_size_same(s_h2, 2), conv_out_size_same(s_w2, 2)
