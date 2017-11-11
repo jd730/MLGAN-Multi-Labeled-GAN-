@@ -4,8 +4,10 @@ samples
 *.zip
 logs
 test*
-
 web/js/gen_layers.js
+
+# other result
+*/*
 
 # checkpoint
 checkpoint

@@ -1,5 +1,5 @@
-python main.py --dataset mlgan_data --input_height=64 --train \
---label2_dim 15 \
---label1_dim 15 \
---label1_path ./data/style.pkl \
---label2_path ./data/genre.pkl
+python main.py --dataset mlg_rococo --input_height=64 --output_height=64 --input_fname_pattern="*.jpg" \
+--batch_size 16 \
+--train 
+
+ #--label1_dim 15 --label2_dim 15 \

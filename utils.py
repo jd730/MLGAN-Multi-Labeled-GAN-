@@ -217,6 +217,16 @@ def visualize(sess, dcgan, config, option):
         y_one_hot[np.arange(config.batch_size), y] = 1
 
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.y: y_one_hot})
+      elif config.label2_dim :
+        label1 = np.random.choice(config.label1_dim, config.batch_size)
+        label1_one_hot = np.zeros((config.batch_size, config.label1_dim))
+        label1_one_hot[np.arange(config.batch_size), label1] = 1
+        label2 = np.random.choice(config.label2_dim, config.batch_size)
+        label2_one_hot = np.zeros((config.batch_size, config.label2_dim))
+        label2_one_hot[np.arange(config.batch_size), label2] = 1
+
+        samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.label1: label1_one_hot, dcgan.label2:label2_one_hot})
+ 
       else:
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
 
@@ -237,6 +247,15 @@ def visualize(sess, dcgan, config, option):
         y_one_hot[np.arange(config.batch_size), y] = 1
 
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.y: y_one_hot})
+      elif config.label2_dim :
+        label1 = np.random.choice(config.label1_dim, config.batch_size)
+        label1_one_hot = np.zeros((config.batch_size, config.label1_dim))
+        label1_one_hot[np.arange(config.batch_size), label1] = 1
+        label2 = np.random.choice(config.label2_dim, config.batch_size)
+        label2_one_hot = np.zeros((config.batch_size, config.label2_dim))
+        label2_one_hot[np.arange(config.batch_size), label2] = 1
+
+        samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.label1: label1_one_hot, dcgan.label2:label2_one_hot})
       else:
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
 
