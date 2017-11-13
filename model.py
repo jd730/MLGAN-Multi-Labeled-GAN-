@@ -67,6 +67,10 @@ class DCGAN(object):
     if not self.y_dim:
       self.d_bn3 = batch_norm(name='d_bn3')
 
+    self.c_bn1 = batch_norm(name='c_bn1')
+    self.c_bn2 = batch_norm(name='c_bn2')
+    self.c_bn3 = batch_norm(name='c_bn3')
+
     self.g_bn0 = batch_norm(name='g_bn0')
     self.g_bn1 = batch_norm(name='g_bn1')
     self.g_bn2 = batch_norm(name='g_bn2')
@@ -155,24 +159,21 @@ class DCGAN(object):
       self.dl1__sum = histogram_summary("d_l1_", self.Dl1_)
     else :
       self.G                  = self.generator(self.z, self.y)
-#      self.D, self.D_logits, self.Dl1, self.Dl1_logits, self.Dl2, self.Dl2_logits   = self.discriminator(inputs, self.y, reuse=False)
-      self.D, self.D_logits,self.Dl1, self.Dl1_logits = self.discriminator(inputs, self.y, reuse=False)
-      self.sampler            = self.sampler(self.z, self.y, self.label1, self.label2)
-      self.D_, self.D_logits_, self.Dl1_, self.Dl1_logits_ = self.discriminator(self.G, self.y, reuse=True)
-#      self.dl1_sum = histogram_summary("d_l1", self.Dl1)
-#      self.dl2_sum = histogram_summary("d_l2", self.Dl2)
-#      self.dl1__sum = histogram_summary("d_l1_", self.Dl1_)
-#      self.dl2__sum = histogram_summary("d_l2_", self.Dl2_)
-
-      self.dl1_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.Dl1_logits,self.label1*0.9)) # .9 is smoothing
-#      self.dl2_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.Dl2_logits,self.label2*0.9))
-#     self.dl1_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.Dl1_logits_,(1.0/self.label1_dim) * tf.ones_like(self.label1)))
-#      self.dl2_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.Dl2_logits_,(1.0/self.label2_dim) * tf.ones_like(self.label2)))
+      self.D, self.D_logits = self.discriminator(inputs, self.y, reuse=False)
+      self.C, self.C_logits = self.classifier(inputs,self.label1, self.label2)
+      self.sampler            = self.sampler(self.z, self.y)
+      self.D_, self.D_logits_ = self.discriminator(self.G, self.y, reuse=True)
+      self.C_, self.C_logits_ = self.classifier(self.G, self.label1, self.label2, reuse=True)
+      
+      self.c_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C_logits,self.label1*0.9)) # .9 is smoothing
+      self.c_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C_logits_,self.label1*0.9)) # .9 is smoothing
 
     self.d_sum = histogram_summary("d", self.D)
     self.d__sum = histogram_summary("d_", self.D_)
     self.G_sum = image_summary("G", self.G)
-
+    self.c_sum = histogram_summary("c", self.C)
+    self.c__sum = histogram_summary("c", self.C_)
+    
     self.d_loss_real = tf.reduce_mean(
       sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
     self.d_loss_fake = tf.reduce_mean(
@@ -182,23 +183,26 @@ class DCGAN(object):
 
     self.d_loss_real_sum = scalar_summary("d_loss_real", self.d_loss_real)
     self.d_loss_fake_sum = scalar_summary("d_loss_fake", self.d_loss_fake)
-    print self.label2_dim
+    self.c_loss_real_sum = scalar_summary("c_loss_real", self.c_loss_real)
+    self.c_loss_fake_sum = scalar_summary("c_loss_fake", self.c_loss_fake)
+
     if self.label2_dim :
-#      self.dl_loss_real_sum = scalar_summary("d_l_loss_real", self.dl1_loss_real + self.dl2_loss_real)                      
-#      self.dl_loss_fake_sum = scalar_summary("d_l_loss_fake", self.dl1_loss_fake + self.dl2_loss_fake)
-      self.d_loss = self.d_loss_real + self.d_loss_fake + (self.dl1_loss_real )
-      self.g_loss = self.g_loss_image# - (self.dl1_loss_fake + self.dl2_loss_fake)*0.00001
+      self.g_loss = self.g_loss_image
+      self.d_loss = self.d_loss_real + self.d_loss_fake
+      self.c_loss = self.c_loss_real + self.c_loss_fake
     else :
       self.d_loss = self.d_loss_real + self.d_loss_fake
       self.g_loss = self.g_loss_image
     
     self.g_loss_sum = scalar_summary("g_loss", self.g_loss)
     self.d_loss_sum = scalar_summary("d_loss", self.d_loss)
+    self.c_loss_sum = scalar_summary("c_loss", self.c_loss)
 
     t_vars = tf.trainable_variables()
 
     self.d_vars = [var for var in t_vars if 'd_' in var.name]
     self.g_vars = [var for var in t_vars if 'g_' in var.name]
+    self.c_vars = [var for var in t_vars if 'c_' in var.name]
 
     self.saver = tf.train.Saver()
 
@@ -206,7 +210,10 @@ class DCGAN(object):
     d_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
               .minimize(self.d_loss, var_list=self.d_vars)
     g_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
-              .minimize(self.g_loss, var_list=self.g_vars)
+             .minimize(self.g_loss, var_list=self.g_vars)
+
+    c_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
+             .minimize(self.c_loss, var_list=self.c_vars)
     try:
       tf.global_variables_initializer().run()
     except:
@@ -215,7 +222,9 @@ class DCGAN(object):
     self.g_sum = merge_summary([self.z_sum, self.d__sum,
       self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
     self.d_sum = merge_summary(
-        [self.z_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])#, self.dl_loss_real_sum, self.dl_loss_fake_sum])
+        [self.z_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
+    self.c_sum = merge_summary(
+        [self.z_sum, self.c_sum, self.c_loss_real_sum, self.c_loss_sum])
     self.writer = SummaryWriter("./logs", self.sess.graph)
 
     sample_z = np.random.uniform(-1, 1, size=(self.sample_num , self.z_dim))
@@ -307,6 +316,7 @@ class DCGAN(object):
               self.y:batch_labels,
             })
           self.writer.add_summary(summary_str, counter)
+          
 
           # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
           _, summary_str = self.sess.run([g_optim, self.g_sum],
@@ -325,6 +335,9 @@ class DCGAN(object):
               self.z: batch_z,
               self.y: batch_labels
           })
+
+
+
         elif self.label2_dim: 
            # Update D network
           _, summary_str = self.sess.run([d_optim, self.d_sum],
@@ -341,14 +354,27 @@ class DCGAN(object):
           _, summary_str = self.sess.run([g_optim, self.g_sum],
             feed_dict={ self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s})
           self.writer.add_summary(summary_str, counter)
+          # Update C network
+          _, summary_str = self.sess.run([c_optim, self.c_sum],
+            feed_dict={    self.inputs:batch_images,
+              self.z: batch_z,               self.label1:batch_label1s,            self.label2:batch_label2s
+            })
+          self.writer.add_summary(summary_str, counter)
+
+          errD_fake = self.d_loss_fake.eval({ self.z: batch_z })
+          errD_real = self.d_loss_real.eval({ self.inputs: batch_images })
+          errG = self.g_loss.eval({self.z: batch_z})
           
-          errD_fake = self.d_loss_fake.eval({ self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s })
-          errD_real = self.d_loss_real.eval({ self.inputs: batch_images, self.label1: batch_label1s, self.label2: batch_label2s })
-          errG = self.g_loss.eval({self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s})
-#          errDl1_fake = self.dl1_loss_fake.eval({self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s})
-#          errDl2_fake = self.dl2_loss_fake.eval({self.z: batch_z, self.label1: batch_label1s, self.label2: batch_label2s})
-#          errDl1_real = self.dl1_loss_real.eval({ self.inputs: batch_images, self.label1: batch_label1s, self.label2: batch_label2s })
-#          errDl2_real = self.dl2_loss_real.eval({ self.inputs: batch_images, self.label1: batch_label1s, self.label2: batch_label2s })
+          errC_fake = self.c_loss_fake.eval({
+              self.z:batch_z,
+              self.label1:batch_label1s,
+              self.label2:batch_label2s
+           })
+          errC_real = self.c_loss_real.eval({
+              self.inputs:batch_images,
+              self.label1:batch_label1s,
+              self.label2:batch_label2s
+           })
         else: 
            # Update D network
           _, summary_str = self.sess.run([d_optim, self.d_sum],feed_dict={ self.inputs: batch_images, self.z: batch_z})
@@ -388,8 +414,8 @@ class DCGAN(object):
             print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss)) 
           elif self.label2_dim:
             try:
-              samples, d_loss, g_loss = self.sess.run(
-                [self.sampler, self.d_loss, self.g_loss],
+              samples, d_loss, g_loss, c_loss = self.sess.run(
+                [self.sampler, self.d_loss, self.g_loss, self.c_loss],
                 feed_dict={
                     self.z: sample_z,
                     self.inputs: sample_inputs,
@@ -399,7 +425,7 @@ class DCGAN(object):
               )
               save_images(samples, image_manifold_size(samples.shape[0]),
                     './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
-              print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss)) 
+              print("[Sample] d_loss: %.8f, g_loss: %.8f, c_loss %.8f" % (d_loss, g_loss,c_loss)) 
             except:
               print("one pic error!...")
           else :
@@ -465,14 +491,24 @@ class DCGAN(object):
         h3_reshape = tf.reshape(h3, [self.batch_size, -1])
         h4 = linear(h3_reshape,1, 'd_h4_lin')
         
-        hf0 = lrelu(linear(h3_reshape,1024 , 'd_hf0_lin'))
-        hf1 = lrelu(linear(hf0, 512 , 'd_hf1_lin'))
-        hf2 = lrelu(linear(hf1, self.label1_dim , 'd_hf2_lin'))
-#        hs0 = lrelu(linear(h3_reshape,1024 , 'd_hs0_lin'))
-#        hs1 = lrelu(linear(hs0, 512 , 'd_hs1_lin'))
-#        hs2 = lrelu(linear(hs1, self.label2_dim , 'd_hs2_lin'))
-        return tf.nn.sigmoid(h4), h4, tf.nn.softmax(hf2),hf2#, tf.nn.softmax(hs2), hs2  
+        return tf.nn.sigmoid(h4), h4
 
+  def classifier(self, image, label1=None, label2=None, reuse=False) :
+    with tf.variable_scope("classifer") as scope :
+      if reuse :
+        scope.reuse_variables()
+      h0 = lrelu(conv2d(image, self.df_dim, name='c_h0_conv'))
+      h1 = lrelu(self.c_bn1(conv2d(h0, self.df_dim*2, name='c_h1_conv')))
+      h2 = lrelu(self.c_bn2(conv2d(h1, self.df_dim*4, name='c_h2_conv')))
+      h3 = lrelu(self.c_bn3(conv2d(h2, self.df_dim*8, name='c_h3_conv')))
+        
+      h3_reshape = tf.reshape(h3, [self.batch_size, -1])
+        
+      hf0 = lrelu(linear(h3_reshape,1024 , 'c_hf0_lin'))
+      hf1 = lrelu(linear(hf0, 512 , 'c_hf1_lin'))
+      hf2 = lrelu(linear(hf1, self.label1_dim , 'c_hf2_lin'))
+      return tf.nn.softmax(hf2),hf2
+#  
   def generator(self, z, y=None):
     with tf.variable_scope("generator") as scope:
       if self.y_dim:
@@ -566,12 +602,6 @@ class DCGAN(object):
         s_h4, s_w4 = conv_out_size_same(s_h2, 2), conv_out_size_same(s_w2, 2)
         s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
         s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
-       # tiled_label1 = tf.tile(self.label1, int(self.z_dim/self.label1_dim))
-       # tiled_label2 = tf.tile(self.label2, int(self.z_dim/self.label2_dim))
-        #print np.shape(tiled_label1)
-#        tiled_label1 = self.label1
-#        tiled_label2 = self.label2
- #       z = concat([z,tiled_label1,tiled_label2],1)
  
         # project `z` and reshape
         self.z_, self.h0_w, self.h0_b = linear(
@@ -600,7 +630,7 @@ class DCGAN(object):
 
 
 
-  def sampler(self, z, y=None, label1=None, label2=None):
+  def sampler(self, z, y=None):
     with tf.variable_scope("generator") as scope:
       scope.reuse_variables()
       if self.y_dim :
@@ -675,9 +705,6 @@ class DCGAN(object):
         s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
         s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
 
-   #     tiled_label1 = label1
-   #     tiled_label2 = label2
-   #     z = concat([z,tiled_label1,tiled_label2],1)
         # project `z` and reshape
         h0 = tf.reshape(
             linear(z, self.gf_dim*8*s_h16*s_w16, 'g_h0_lin'),

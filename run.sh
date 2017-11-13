@@ -1,4 +1,4 @@
-python main.py --dataset total --input_height=64 --output_height=64 --input_fname_pattern="*.jpg" \
+python main.py --dataset C --input_height=64 --output_height=64 --input_fname_pattern="*.jpg" \
 --batch_size 16 \
 --epoch 100 \
 --train \
