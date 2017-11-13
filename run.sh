@@ -1,5 +1,7 @@
-python main.py --dataset 3data_back --input_height=64 --output_height=64 --input_fname_pattern="*.jpg" \
---batch_size 64 \
+python main.py --dataset total --input_height=64 --output_height=64 --input_fname_pattern="*.jpg" \
+--batch_size 16 \
+--epoch 100 \
 --train \
+--learning_rate 0.0001 \
 --label1_dim 15 --label2_dim 15 \
---label1_path ./data/3meta/style.pkl --label2_path ./data/3meta/genre.pkl
+--label1_path ./data/mlgan_meta/style.pkl --label2_path ./data/mlgan_meta/genre.pkl
