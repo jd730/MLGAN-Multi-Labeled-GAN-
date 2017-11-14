@@ -160,19 +160,25 @@ class DCGAN(object):
     else :
       self.G                  = self.generator(self.z, self.y)
       self.D, self.D_logits = self.discriminator(inputs, self.y, reuse=False)
-      self.C, self.C_logits = self.classifier(inputs,self.label1, self.label2)
+      self.C1, self.C1_logits, self.C2, self.C2_logits = self.classifier(inputs,self.label1, self.label2)
       self.sampler            = self.sampler(self.z, self.y)
       self.D_, self.D_logits_ = self.discriminator(self.G, self.y, reuse=True)
-      self.C_, self.C_logits_ = self.classifier(self.G, self.label1, self.label2, reuse=True)
+      self.C1_, self.C1_logits_, self.C2_, self.C2_logits_ = self.classifier(self.G, self.label1, self.label2, reuse=True)
       
-      self.c_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C_logits,self.label1*0.9)) # .9 is smoothing
-      self.c_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C_logits_,self.label1*0.9)) # .9 is smoothing
+      self.c1_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C1_logits,self.label1*0.9)) # .9 is smoothing
+      self.c1_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C1_logits_,self.label1*0.9)) # .9 is smoothing
+      self.c2_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C2_logits,self.label1*0.9)) # .9 is smoothing
+      self.c2_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C2_logits_,self.label1*0.9)) # .9 is smoothing
+      self.c_loss_real = self.c1_loss_real + self.c2_loss_real
+      self.c_loss_fake = self.c1_loss_fake + self.c2_loss_fake
 
     self.d_sum = histogram_summary("d", self.D)
     self.d__sum = histogram_summary("d_", self.D_)
     self.G_sum = image_summary("G", self.G)
-    self.c_sum = histogram_summary("c", self.C)
-    self.c__sum = histogram_summary("c", self.C_)
+    self.c1_sum = histogram_summary("c1", self.C1)
+    self.c1__sum = histogram_summary("c1_", self.C1_)
+    self.c2_sum = histogram_summary("c2", self.C2)
+    self.c2__sum = histogram_summary("c2_", self.C2_)
     
     self.d_loss_real = tf.reduce_mean(
       sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
@@ -187,9 +193,9 @@ class DCGAN(object):
     self.c_loss_fake_sum = scalar_summary("c_loss_fake", self.c_loss_fake)
 
     if self.label2_dim :
-      self.g_loss = self.g_loss_image
+      self.g_loss = self.g_loss_image + self.c_loss_fake
       self.d_loss = self.d_loss_real + self.d_loss_fake
-      self.c_loss = self.c_loss_real + self.c_loss_fake
+      self.c_loss = self.c_loss_real
     else :
       self.d_loss = self.d_loss_real + self.d_loss_fake
       self.g_loss = self.g_loss_image
@@ -224,7 +230,7 @@ class DCGAN(object):
     self.d_sum = merge_summary(
         [self.z_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
     self.c_sum = merge_summary(
-        [self.z_sum, self.c_sum, self.c_loss_real_sum, self.c_loss_sum])
+        [self.z_sum, self.c1_sum, self.c_loss_real_sum, self.c_loss_sum])
     self.writer = SummaryWriter("./logs", self.sess.graph)
 
     sample_z = np.random.uniform(-1, 1, size=(self.sample_num , self.z_dim))
@@ -290,7 +296,6 @@ class DCGAN(object):
             batch_label2s = one_hot(batch_label2s, self.label2_dim)
           else : 
             batch_label2s = None
-
           if self.grayscale:
             batch_images = np.array(batch).astype(np.float32)[:, :, :, None]
           else: 
@@ -363,7 +368,7 @@ class DCGAN(object):
 
           errD_fake = self.d_loss_fake.eval({ self.z: batch_z })
           errD_real = self.d_loss_real.eval({ self.inputs: batch_images })
-          errG = self.g_loss.eval({self.z: batch_z})
+          errG = self.g_loss.eval({self.z: batch_z, self.label1:batch_label1s, self.label2:batch_label2s})
           
           errC_fake = self.c_loss_fake.eval({
               self.z:batch_z,
@@ -507,7 +512,10 @@ class DCGAN(object):
       hf0 = lrelu(linear(h3_reshape,1024 , 'c_hf0_lin'))
       hf1 = lrelu(linear(hf0, 512 , 'c_hf1_lin'))
       hf2 = lrelu(linear(hf1, self.label1_dim , 'c_hf2_lin'))
-      return tf.nn.softmax(hf2),hf2
+      hs0 = lrelu(linear(h3_reshape,1024 , 'c_hs0_lin'))
+      hs1 = lrelu(linear(hf0, 512 , 'c_hs1_lin'))
+      hs2 = lrelu(linear(hf1, self.label1_dim , 'c_hs2_lin'))
+      return tf.nn.softmax(hf2),hf2, tf.nn.softmax(hs2), hs2
 #  
   def generator(self, z, y=None):
     with tf.variable_scope("generator") as scope:
