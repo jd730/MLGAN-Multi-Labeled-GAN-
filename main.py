@@ -100,7 +100,7 @@ def main(_):
     #                 [dcgan.h4_w, dcgan.h4_b, None])
 
     # Below is codes for visualization
-    OPTION = 2
+    OPTION = 5
     visualize(sess, dcgan, FLAGS, OPTION)
 
 if __name__ == '__main__':

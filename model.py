@@ -70,6 +70,16 @@ class DCGAN(object):
     self.c_bn1 = batch_norm(name='c_bn1')
     self.c_bn2 = batch_norm(name='c_bn2')
     self.c_bn3 = batch_norm(name='c_bn3')
+    self.c_bnf0 = batch_norm(name='c_bnf0')
+    self.c_bnf1 = batch_norm(name='c_bnf1')
+    self.c_bnf2 = batch_norm(name='c_bnf2')
+
+    self.c_bns0 = batch_norm(name='c_bns0')
+    self.c_bns1 = batch_norm(name='c_bns1')
+    self.c_bns2 = batch_norm(name='c_bns2')
+
+
+
 
     self.g_bn0 = batch_norm(name='g_bn0')
     self.g_bn1 = batch_norm(name='g_bn1')
@@ -511,12 +521,12 @@ class DCGAN(object):
         
       h3_reshape = tf.reshape(h3, [self.batch_size, -1])
         
-      hf0 = lrelu(linear(h3_reshape,1024 , 'c_hf0_lin'))
-      hf1 = lrelu(linear(hf0, 512 , 'c_hf1_lin'))
-      hf2 = lrelu(linear(hf1, self.label1_dim , 'c_hf2_lin'))
-      hs0 = lrelu(linear(h3_reshape,1024 , 'c_hs0_lin'))
-      hs1 = lrelu(linear(hf0, 512 , 'c_hs1_lin'))
-      hs2 = lrelu(linear(hf1, self.label1_dim , 'c_hs2_lin'))
+      hf0 = lrelu(self.c_bnf0(linear(h3_reshape,1024 , 'c_hf0_lin')))
+      hf1 = lrelu(self.c_bnf1(linear(hf0, 512 , 'c_hf1_lin')))
+      hf2 = lrelu(self.c_bnf2(linear(hf1, self.label1_dim , 'c_hf2_lin')))
+      hs0 = lrelu(self.c_bns0(linear(h3_reshape,1024 , 'c_hs0_lin')))
+      hs1 = lrelu(self.c_bns1(linear(hs0, 512 , 'c_hs1_lin')))
+      hs2 = lrelu(self.c_bns2(linear(hs1, self.label1_dim , 'c_hs2_lin')))
       return tf.nn.softmax(hf2),hf2,tf.nn.softmax(hs2), hs2
 #  
   def generator(self, z, y=None, label1=None,label2=None):
@@ -613,6 +623,7 @@ class DCGAN(object):
         s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
         s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
         z = concat([z,label1],1)
+        z = concat([z,label2],1)
         # project `z` and reshape
         self.z_, self.h0_w, self.h0_b = linear(
             z, self.gf_dim*8*s_h16*s_w16, 'g_h0_lin', with_w=True)
@@ -716,6 +727,8 @@ class DCGAN(object):
         s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
 
         z = concat([z,label1],1)
+        z = concat([z,label2],1)
+        print(np.shape(z))
         # project `z` and reshape
         h0 = tf.reshape(
             linear(z, self.gf_dim*8*s_h16*s_w16, 'g_h0_lin'),
