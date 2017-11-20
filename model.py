@@ -158,11 +158,13 @@ class DCGAN(object):
       self.dl1_sum = histogram_summary("d_l1", self.Dl1)
       self.dl1__sum = histogram_summary("d_l1_", self.Dl1_)
     else :
-      self.G                  = self.generator(self.z, self.y)
+      self.G                  = self.generator(self.z, self.y, self.label1, self.label2)
       self.D, self.D_logits = self.discriminator(inputs, self.y, reuse=False)
       self.C1, self.C1_logits, self.C2, self.C2_logits = self.classifier(inputs,self.label1, self.label2)
-      self.sampler            = self.sampler(self.z, self.y)
+#      self.C1, self.C1_logits =  self.classifier(inputs,self.label1, self.label2)
+      self.sampler            = self.sampler(self.z, self.y,self.label1, self.label2)
       self.D_, self.D_logits_ = self.discriminator(self.G, self.y, reuse=True)
+ #     self.C1_, self.C1_logits_= self.classifier(self.G, self.label1, self.label2, reuse=True)
       self.C1_, self.C1_logits_, self.C2_, self.C2_logits_ = self.classifier(self.G, self.label1, self.label2, reuse=True)
       
       self.c1_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C1_logits,self.label1*0.9)) # .9 is smoothing
@@ -170,7 +172,7 @@ class DCGAN(object):
       self.c2_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C2_logits,self.label1*0.9)) # .9 is smoothing
       self.c2_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C2_logits_,self.label1*0.9)) # .9 is smoothing
       self.c_loss_real = self.c1_loss_real + self.c2_loss_real
-      self.c_loss_fake = self.c1_loss_fake + self.c2_loss_fake
+      self.cf_loss_fake = self.c1_loss_fake + self.c2_loss_fake
 
     self.d_sum = histogram_summary("d", self.D)
     self.d__sum = histogram_summary("d_", self.D_)
@@ -190,11 +192,11 @@ class DCGAN(object):
     self.d_loss_real_sum = scalar_summary("d_loss_real", self.d_loss_real)
     self.d_loss_fake_sum = scalar_summary("d_loss_fake", self.d_loss_fake)
     self.c_loss_real_sum = scalar_summary("c_loss_real", self.c_loss_real)
-    self.c_loss_fake_sum = scalar_summary("c_loss_fake", self.c_loss_fake)
+    self.c_loss_fake_sum = scalar_summary("c_loss_fake", self.cf_loss_fake)
 
     if self.label2_dim :
-      self.g_loss = self.g_loss_image + self.c_loss_fake
-      self.d_loss = self.d_loss_real + self.d_loss_fake
+      self.g_loss = self.g_loss_image + self.cf_loss_fake*0.0001
+      self.d_loss = self.d_loss_real + self.d_loss_fake     
       self.c_loss = self.c_loss_real
     else :
       self.d_loss = self.d_loss_real + self.d_loss_fake
@@ -366,11 +368,11 @@ class DCGAN(object):
             })
           self.writer.add_summary(summary_str, counter)
 
-          errD_fake = self.d_loss_fake.eval({ self.z: batch_z })
-          errD_real = self.d_loss_real.eval({ self.inputs: batch_images })
+          errD_fake = self.d_loss_fake.eval({ self.z: batch_z , self.label1: batch_label1s, self.label2 : batch_label2s})
+          errD_real = self.d_loss_real.eval({ self.inputs: batch_images, self.label1:batch_label1s, self.label2:batch_label2s })
           errG = self.g_loss.eval({self.z: batch_z, self.label1:batch_label1s, self.label2:batch_label2s})
           
-          errC_fake = self.c_loss_fake.eval({
+          errC_fake = self.cf_loss_fake.eval({
               self.z:batch_z,
               self.label1:batch_label1s,
               self.label2:batch_label2s
@@ -399,9 +401,9 @@ class DCGAN(object):
           
 
         counter += 1
-        print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
+        print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f c_loss_real : %.8f c_loss_fake : %.8f" \
           % (epoch, idx, batch_idxs,
-            time.time() - start_time, errD_fake+errD_real, errG))
+            time.time() - start_time, errD_fake+errD_real, errG, errC_real, errC_fake))
 #        if self.label2_dim :
 #          print (errDl1_real, errDl2_real, errDl1_fake, errDl2_fake)
         if np.mod(counter, 100) == 1:
@@ -411,7 +413,7 @@ class DCGAN(object):
               feed_dict={
                   self.z: sample_z,
                   self.inputs: sample_inputs,
-                  self.y:sample_labels,
+                  self.y:sample_labels
               }
             )
             save_images(samples, image_manifold_size(samples.shape[0]),
@@ -515,9 +517,9 @@ class DCGAN(object):
       hs0 = lrelu(linear(h3_reshape,1024 , 'c_hs0_lin'))
       hs1 = lrelu(linear(hf0, 512 , 'c_hs1_lin'))
       hs2 = lrelu(linear(hf1, self.label1_dim , 'c_hs2_lin'))
-      return tf.nn.softmax(hf2),hf2, tf.nn.softmax(hs2), hs2
+      return tf.nn.softmax(hf2),hf2,tf.nn.softmax(hs2), hs2
 #  
-  def generator(self, z, y=None):
+  def generator(self, z, y=None, label1=None,label2=None):
     with tf.variable_scope("generator") as scope:
       if self.y_dim:
         s_h, s_w = self.output_height, self.output_width
@@ -527,7 +529,6 @@ class DCGAN(object):
         # yb = tf.expand_dims(tf.expand_dims(y, 1),2)
         yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
         z = concat([z, y], 1)
-        print np.shape(z)
 
         h0 = tf.nn.relu(
             self.g_bn0(linear(z, self.gfc_dim, 'g_h0_lin')))
@@ -581,6 +582,7 @@ class DCGAN(object):
         s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
         s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
        # project `z` and reshape
+        z = concat([z,label1],1)
         self.z_, self.h0_w, self.h0_b = linear(
             z, self.gf_dim*8*s_h16*s_w16, 'g_h0_lin', with_w=True)
 
@@ -610,7 +612,7 @@ class DCGAN(object):
         s_h4, s_w4 = conv_out_size_same(s_h2, 2), conv_out_size_same(s_w2, 2)
         s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
         s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
- 
+        z = concat([z,label1],1)
         # project `z` and reshape
         self.z_, self.h0_w, self.h0_b = linear(
             z, self.gf_dim*8*s_h16*s_w16, 'g_h0_lin', with_w=True)
@@ -638,7 +640,7 @@ class DCGAN(object):
 
 
 
-  def sampler(self, z, y=None):
+  def sampler(self, z, y=None,label1=None, label2=None):
     with tf.variable_scope("generator") as scope:
       scope.reuse_variables()
       if self.y_dim :
@@ -713,6 +715,7 @@ class DCGAN(object):
         s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
         s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
 
+        z = concat([z,label1],1)
         # project `z` and reshape
         h0 = tf.reshape(
             linear(z, self.gf_dim*8*s_h16*s_w16, 'g_h0_lin'),
