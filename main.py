@@ -81,7 +81,9 @@ def main(_):
           label1_dim = FLAGS.label1_dim,
           label2_dim = FLAGS.label2_dim,
           label1_path = FLAGS.label1_path,
-          label2_path = FLAGS.label2_path
+          label2_path = FLAGS.label2_path,
+          gf_dim=128,
+          df_dim=128
           )
 
     show_all_variables()
