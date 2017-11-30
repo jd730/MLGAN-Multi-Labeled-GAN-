@@ -174,7 +174,8 @@ class DCGAN(object):
       self.C1_, self.C1_logits_, self.C2_, self.C2_logits_ = self.classifier(self.G, self.label1, self.label2, reuse=True)
       
       self.c1_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C1_logits,self.label1*0.9)) # .9 is smoothing
-      self.c1_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C1_logits_,self.label1*0.9)) # .9 is smoothing
+#      self.c1_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C1_logits_,self.label1*0.9)) # .9 is smoothing
+      self.c1_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C1_logits_,1/(self.label1_dim)*tf.ones_like(self.C1_) )) # Style ambiguity
       self.c2_loss_real = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C2_logits,self.label1*0.9)) # .9 is smoothing
       self.c2_loss_fake = tf.reduce_mean(softmax_cross_entropy_with_logits(self.C2_logits_,self.label1*0.9)) # .9 is smoothing
       self.c_loss_real = self.c1_loss_real + self.c2_loss_real
