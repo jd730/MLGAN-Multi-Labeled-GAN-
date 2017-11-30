@@ -60,6 +60,21 @@ def get_image(image_path, input_height, input_width,
 def save_images(images, size, image_path):
   return imsave(inverse_transform(images), size, image_path)
 
+def save_labels(label1s, label2s,ori1,ori2,label_path) :
+    print('save_labels')
+    with open(label_path,'w') as f :
+        for e in ori1:
+            f.write(e+'  |  ')
+        f.write('\n')
+        for e in ori2 :
+            f.write(e+'  |  ')
+        f.write('\n')
+        cut = int(np.sqrt(len(label1s)))
+        for i in range(0,len(label1s)) :
+            f.write( '({},{}) '.format(label1s[i], label2s[i]))
+            if (i+1)%cut == 0 :
+                f.write('\n')
+
 def imread(path, grayscale = False):
   if (grayscale):
     return scipy.misc.imread(path, flatten = True).astype(np.float)
