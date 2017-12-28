@@ -12,7 +12,7 @@ flags.DEFINE_integer("epoch", 100, "Epoch to train [25]")
 flags.DEFINE_float("learning_rate", 0.0002, "Learning rate of for adam [0.0002]")
 flags.DEFINE_float("beta1", 0.5, "Momentum term of adam [0.5]")
 flags.DEFINE_integer("train_size", np.inf, "The size of train images [np.inf]")
-flags.DEFINE_integer("batch_size", 16, "The size of batch images [64]")
+flags.DEFINE_integer("batch_size", 64, "The size of batch images [64]")
 flags.DEFINE_integer("input_height", 108, "The size of image to use (will be center cropped). [108]")
 flags.DEFINE_integer("input_width", None, "The size of image to use (will be center cropped). If None, same value as input_height [None]")
 flags.DEFINE_integer("output_height", 64, "The size of the output images to produce [64]")
@@ -28,7 +28,7 @@ flags.DEFINE_integer("label2_dim",None, "label2's dimension [None]")
 flags.DEFINE_integer("label1_dim",None, "label2's dimension [None]")
 flags.DEFINE_string("label1_path", "./data/style.pkl", "path of label1 [./data/style.pkl]")
 flags.DEFINE_string("label2_path", "./data/genre.pkl", "path of label2 [./data/genre.pkl]")
-#flags.DEFINE_integer("label1_dim",None, "label1's dimension [None]") # when I do this name. expected one argument error occur
+flags.DEFINE_float("weight",1,"weight of classification term [1.0]")
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -81,7 +81,8 @@ def main(_):
           label1_dim = FLAGS.label1_dim,
           label2_dim = FLAGS.label2_dim,
           label1_path = FLAGS.label1_path,
-          label2_path = FLAGS.label2_path
+          label2_path = FLAGS.label2_path,
+          weight = FLAGS.weight
           )
 
     show_all_variables()
@@ -100,7 +101,7 @@ def main(_):
     #                 [dcgan.h4_w, dcgan.h4_b, None])
 
     # Below is codes for visualization
-    OPTION = 1
+    OPTION = 5
     visualize(sess, dcgan, FLAGS, OPTION)
 
 if __name__ == '__main__':

@@ -60,6 +60,21 @@ def get_image(image_path, input_height, input_width,
 def save_images(images, size, image_path):
   return imsave(inverse_transform(images), size, image_path)
 
+def save_labels(label1s, label2s,ori1,ori2,label_path) :
+    print('save_labels')
+    with open(label_path,'w') as f :
+        for e in ori1:
+            f.write(e+'  |  ')
+        f.write('\n')
+        for e in ori2 :
+            f.write(e+'  |  ')
+        f.write('\n')
+        cut = int(np.sqrt(len(label1s)))
+        for i in range(0,len(label1s)) :
+            f.write( '({},{}) '.format(label1s[i], label2s[i]))
+            if (i+1)%cut == 0 :
+                f.write('\n')
+
 def imread(path, grayscale = False):
   if (grayscale):
     return scipy.misc.imread(path, flatten = True).astype(np.float)
@@ -201,7 +216,16 @@ def visualize(sess, dcgan, config, option):
   image_frame_dim = int(math.ceil(config.batch_size**.5))
   if option == 0:
     z_sample = np.random.uniform(-0.5, 0.5, size=(config.batch_size, dcgan.z_dim))
-    samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
+    if config.label2_dim :
+        label1 = np.random.choice(config.label1_dim, config.batch_size)
+        label1_one_hot = np.zeros((config.batch_size, config.label1_dim))
+        label1_one_hot[np.arange(config.batch_size), label1] = 1
+        label2 = np.random.choice(config.label2_dim, config.batch_size)
+        label2_one_hot = np.zeros((config.batch_size, config.label2_dim))
+        label2_one_hot[np.arange(config.batch_size), label2] = 1
+        samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.label1: label1_one_hot, dcgan.label2:label2_one_hot})
+    else :
+        samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
     save_images(samples, [image_frame_dim, image_frame_dim], './samples/test_%s.png' % strftime("%Y%m%d%H%M%S", gmtime()))
   elif option == 1:
     values = np.arange(0, 1, 1./config.batch_size)
@@ -217,6 +241,16 @@ def visualize(sess, dcgan, config, option):
         y_one_hot[np.arange(config.batch_size), y] = 1
 
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.y: y_one_hot})
+      elif config.label2_dim :
+        label1 = np.random.choice(config.label1_dim, config.batch_size)
+        label1_one_hot = np.zeros((config.batch_size, config.label1_dim))
+        label1_one_hot[np.arange(config.batch_size), label1] = 1
+        label2 = np.random.choice(config.label2_dim, config.batch_size)
+        label2_one_hot = np.zeros((config.batch_size, config.label2_dim))
+        label2_one_hot[np.arange(config.batch_size), label2] = 1
+
+        samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.label1: label1_one_hot, dcgan.label2:label2_one_hot})
+ 
       else:
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
 
@@ -237,6 +271,15 @@ def visualize(sess, dcgan, config, option):
         y_one_hot[np.arange(config.batch_size), y] = 1
 
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.y: y_one_hot})
+      elif config.label2_dim :
+        label1 = np.random.choice(config.label1_dim, config.batch_size)
+        label1_one_hot = np.zeros((config.batch_size, config.label1_dim))
+        label1_one_hot[np.arange(config.batch_size), label1] = 1
+        label2 = np.random.choice(config.label2_dim, config.batch_size)
+        label2_one_hot = np.zeros((config.batch_size, config.label2_dim))
+        label2_one_hot[np.arange(config.batch_size), label2] = 1
+
+        samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.label1: label1_one_hot, dcgan.label2:label2_one_hot})
       else:
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
 
@@ -269,6 +312,18 @@ def visualize(sess, dcgan, config, option):
     new_image_set = [merge(np.array([images[idx] for images in image_set]), [10, 10]) \
         for idx in range(64) + range(63, -1, -1)]
     make_gif(new_image_set, './samples/test_gif_merged.gif', duration=8)
+
+  elif option ==5 : # For MLGAN
+    z_sample = np.random.uniform(-0.5, 0.5, size=(config.batch_size, dcgan.z_dim))
+    for i in range(0,config.label1_dim) :
+      for j in range(0,config.label2_dim) :
+        label1_one_hot = np.zeros((config.batch_size, config.label1_dim))
+        label1_one_hot[np.arange(config.batch_size), i] = 1
+        label2_one_hot = np.zeros((config.batch_size, config.label2_dim))
+        label2_one_hot[np.arange(config.batch_size), j] = 1
+        samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.label1: label1_one_hot, dcgan.label2:label2_one_hot})
+        save_images(samples, [image_frame_dim, image_frame_dim], './samples/test_%d_%d.png' % (i,j) )
+ 
 
 
 def image_manifold_size(num_images):
