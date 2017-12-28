@@ -18,7 +18,7 @@ class DCGAN(object):
          batch_size=64, sample_num = 64, output_height=64, output_width=64,
          y_dim=None, z_dim=100, gf_dim=64, df_dim=64,
          gfc_dim=1024, dfc_dim=1024, c_dim=3, dataset_name='default',
-         input_fname_pattern='*.jpg', checkpoint_dir=None, sample_dir=None,
+         input_fname_pattern='*.jpg',weight = 1, checkpoint_dir=None, sample_dir=None,
          label1_dim=None, label2_dim = None, label1_path= None, label2_path = None):
     """
 
@@ -59,7 +59,8 @@ class DCGAN(object):
     self.label2_dim = label2_dim
     self.label1_path = label1_path
     self.label2_path = label2_path
-
+    self.weight = weight
+    
     # batch normalization : deals with poor initialization helps gradient flow
     self.d_bn1 = batch_norm(name='d_bn1')
     self.d_bn2 = batch_norm(name='d_bn2')
@@ -202,7 +203,7 @@ class DCGAN(object):
     self.c_loss_fake_sum = scalar_summary("c_loss_fake", self.cf_loss_fake)
 
     if self.label2_dim :
-      self.g_loss = self.g_loss_image + self.cf_loss_fake
+      self.g_loss = self.g_loss_image + self.cf_loss_fake * self.weight
       self.d_loss = self.d_loss_real + self.d_loss_fake     
       self.c_loss = self.c_loss_real
     else :

@@ -28,7 +28,7 @@ flags.DEFINE_integer("label2_dim",None, "label2's dimension [None]")
 flags.DEFINE_integer("label1_dim",None, "label2's dimension [None]")
 flags.DEFINE_string("label1_path", "./data/style.pkl", "path of label1 [./data/style.pkl]")
 flags.DEFINE_string("label2_path", "./data/genre.pkl", "path of label2 [./data/genre.pkl]")
-#flags.DEFINE_integer("label1_dim",None, "label1's dimension [None]") # when I do this name. expected one argument error occur
+flags.DEFINE_float("weight",1,"weight of classification term [1.0]")
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -82,6 +82,7 @@ def main(_):
           label2_dim = FLAGS.label2_dim,
           label1_path = FLAGS.label1_path,
           label2_path = FLAGS.label2_path,
+          weight = FLAGS.weight
           )
 
     show_all_variables()
