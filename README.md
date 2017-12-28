@@ -3,7 +3,7 @@ Multi label DCGAN. The code highly borrowed from carpedm20's DCGAN
 
 ![Example](./MLGAN_image.png) 
 
-Get data from wikiart (using [Lukas David's wikiart](https://github.com/lucasdavid/wikiart))
+Get data from wikiart (using [Lucas David's wikiart](https://github.com/lucasdavid/wikiart))
 
 `sh get_dataset.sh`
 
